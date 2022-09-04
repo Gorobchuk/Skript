@@ -13,7 +13,7 @@ def _create_date(*, year, month, day):
 
 class Field:
     def __init__(self, value):
-        self._value = value
+        self._value = None
         self.value = value
 
     def __repr__(self):
@@ -27,40 +27,32 @@ class Field:
     def value(self, value):
         self._value = value
 
+
 class Name(Field):
     pass
 
 
 class Phone(Field):
-    def __init__(self, value):
-        super().__init__(value)
-        self.value = self._value
-
     @property
     def value(self) -> str:
         return self._value
 
     @value.setter
     def value(self, value):
-        new_value = re.findall(r"(?:\+\d{2})?\d{3,4}\D?\d{3}\D?\d{3}", value)
-        for i in new_value:
-            new_value = i
-            if len(self.__value) >= 9 and len(new_value) > 0:
-                self.__value = new_value
-            else:
-                self.__value = None
-
+        print("Perform some validation")
+        self._value = f"Overriden {value}"
 
 class Birthday(Field):
     @property
-    def value(self) -> datetime.datetime:
+    def value(self) -> datetime.datetime.date:
         return self._value
 
-    @Field.value.setter
+    @value.setter
     def value(self, value):
-        self.__value = datetime.datetime.strptime(value, "%d-%m-%Y")
+        self._value = datetime.datetime.strptime(value, "%d-%m-%Y")
 
-
+    def __repr__(self):
+        return datetime.datetime.strftime(self._value, "%d-%m-%Y")
 
 class AddressBook(UserDict):
     __items_per_page = None
@@ -95,34 +87,32 @@ class AddressBook(UserDict):
         self.page = 0
         return self
 
-
     def __next__(self):
-        records = self.data.values()
+        records = list(self.data.items())
         start_index = self.page * self.__items_per_page
         end_index = (self.page + 1) * self.__items_per_page
-
+        self.page += 1
         if len(records) > end_index:
-            return records[start_index:end_index]
+            to_return = records[start_index:end_index]
         else:
             if len(records) > start_index:
-                return records[start_index: len(records)]
+                to_return = records[start_index: len(records)]
             else:
-                return records[:-1]
-
+                to_return = records[:-1]
+        self.page += 1
+        return [{record[1], record[0]} for record in to_return]
 
 
 class Record:
-
     def __init__(self, name: Name, phone: Phone = None, birthday: Birthday = None ):
         self.name: Name = name
         self.phones: list[Phone] = [phone] if phone is not None else []
         self.birthday = birthday
 
-
     def days_to_birthday(self):
         now = _now()
         if self.birthday is not None:
-            birthday: datetime.datetime = self.birthday.value.date()
+            birthday: datetime.datetime.date = self.birthday.value.date()
             next_birthday = _create_date(year=now.year, month=birthday.month, day=birthday.day)
             if birthday < next_birthday:
                 next_birthday = _create_date(year=next_birthday.year + 1, month=next_birthday.month, day=next_birthday.day)
@@ -148,3 +138,10 @@ class Record:
         except ValueError:
             return f"{phone} does not exist"
 
+
+if __name__ == "__main__":
+    addr = AddressBook()
+    for x in range(35):
+        addr.add_record(Record(Name(f"name_{x}")))
+    gen = iter(addr)
+    print(next(gen))
